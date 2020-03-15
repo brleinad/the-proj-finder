@@ -1,5 +1,11 @@
 """
 
+TODOs:
+    * Error handling: MP API not working, no routes near location
+    * add weather forecast 
+    * Write all doc strings
+    * Write doc tests
+    * Write a few tests
 """
 
 __author__ = 'Daniel Rodas Bautista'
@@ -16,7 +22,17 @@ class ProjFinder():
     def __init__(self):
         self.nearby_route =[]
 
-    def main():
+    def get_best_routes(self, routes):
+        """
+        Returns a list of the best routes (based on the stars) given a list of routes)
+        """
+        #Sort the list of routes
+        #split the list to give just the first 5
+        best_routes = routes
+        return best_routes
+        pass
+
+    def main(self):
 
         # TODO: optionally get the email/key from the user.
         email    = 'daniel.rodas.bautista@gmail.com'
@@ -47,7 +63,7 @@ class ProjFinder():
             route.print_route_name()
 
         ## Parse the list of routes to get the best ones (top 5 by default).
-        #best_routes = self.get_best_routes(nearby_routes)
+        best_routes = self.get_best_routes(nearby_routes)
 
         ## Show in a pretty way these routes with route name, grade, location, link.
         #self.print_routes(best_routes)
@@ -55,10 +71,8 @@ class ProjFinder():
 
 class MountainProjectAPI():
     """
+    A class to interact with the Mountain Project API https://www.mountainproject.com/data
     """
-
-    MP_URL     = 'https://www.mountainproject.com/data/'
-    parameters = {}
 
     def __init__(self, email, key):
 
@@ -66,7 +80,6 @@ class MountainProjectAPI():
                 'email' : email,
                 'key'   : key,
                 }
-
 
     def jprint(self, obj):
         text = json.dumps(obj, sort_keys=True, indent=4)
@@ -80,13 +93,6 @@ class MountainProjectAPI():
         response = requests.get(self.MP_URL+'get-user', params = self.parameters)
         self.jprint(response.json())
         return response
-
-
-    def get_best_routes(self, routes):
-        """
-        Returns a list of the 10 best rated routes from a list of routes
-        """
-        pass
 
     def get_nearby_routes(self, location, max_distance = 30, max_results = 50, min_diff = 5.6, max_diff = 5.13):
         """
@@ -102,17 +108,31 @@ class MountainProjectAPI():
         #minDiff - Min difficulty of routes to return, e.g. 5.6 or V0.
         #maxDiff - Max difficulty of routes to return, e.g. 5.10a or V2.
 
-        self.parameters['lat']         = location.latitude
-        self.parameters['lon']         = location.longitude
-        self.parameters['maxDistance'] = max_distance
-        self.parameters['maxResults']  = max_results
-        self.parameters['minDiff']     = min_diff
-        self.parameters['maxDiff']     = max_diff
+        params = self.parameters
 
-        response = requests.get(self.MP_URL+'get-routes-for-lat-lon', params = self.parameters)
+        params['lat']         = location.latitude
+        params['lon']         = location.longitude
+        params['maxDistance'] = max_distance
+        params['maxResults']  = max_results
+        params['minDiff']     = min_diff
+        params['maxDiff']     = max_diff
+
+        #response = requests.get(self.MP_URL+'get-routes-for-lat-lon', params = self.parameters)
+        response = self.get_response_from_api('get-routes-for-lat-lon', params)
         #self.jprint(response.json())
         nearby_routes = self.json2routes(response.json())
         return nearby_routes
+
+    def get_response_from_api(self, api_method, parameters):
+        """
+        """
+        MP_URL   = 'https://www.mountainproject.com/data/'
+        #try:
+        response = requests.get(''.join((MP_URL, api_method)), params = parameters)
+        #response = requests.get(MP_URL+api_method, params = parameters)
+        #except ConnectionError:
+            #print('ERROR: Could not connect to Mountain Project')
+        return response
 
     def json2routes(self, json_routes):
         """
@@ -153,6 +173,9 @@ class Location():
     def __init__(self):
         pass
 
+    #def __str__(self):
+        #return 
+
     def get_location(self, ip_address = None):
         """
         Returns a touple with lattitute and longitude according to the IP address. It uses the ipinfo library.
@@ -162,7 +185,7 @@ class Location():
         handler        = ipinfo.getHandler(access_token)
         details        = handler.getDetails(ip_address)
         self.city      = details.city
-        self.country   = details.city
+        self.country   = details.country
         self.longitude = details.longitude
         self.latitude  = details.latitude
         return (self.latitude, self.longitude,)
@@ -174,8 +197,9 @@ class Location():
         print(self.latitude + ', ' + self.longitude)
         print('Latitude  : ' + self.latitude)
         print('Longitude : ' + self.longitude)
-        #print('city      : ' + self.city)
-        print('country   : ' + self.city)
+        print('city      : ' + self.city)
+        print('country   : ' + self.country)
+
 
 class Route():
     """
@@ -190,6 +214,9 @@ class Route():
         self.pitches  = pitches
         self.location = location
         self.url      = url
+
+    def __str__(self):
+        return self.name
 
     def is_single_pitch(self):
         return self.pitches == 1
@@ -207,7 +234,13 @@ class Route():
         return self.style == 'sport'
 
     def print_route_name(self):
-        print(self.name)
+        #print((self.name, self.grade))
+        print(self)
 
 
-ProjFinder.main()
+if __name__ == '__main__':
+    proj_finder = ProjFinder()
+    try:
+        proj_finder.main()
+    except (ConnectionError):
+        print('Could not connect to Mountain Project API')
