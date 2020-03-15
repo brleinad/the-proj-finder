@@ -1,7 +1,7 @@
 """
 
 TODOs:
-    * Error handling: MP API not working, no routes near location
+    * Error handling: MP API not working, no routes near location, etc
     * add weather forecast 
     * Write all doc strings
     * Write doc tests
@@ -13,9 +13,10 @@ __author__ = 'Daniel Rodas Bautista'
 import requests
 import json 
 import ipinfo
+import re
 
 
-class ProjFinder():
+class ProjFinder(object):
     """
     """
 
@@ -26,11 +27,31 @@ class ProjFinder():
         """
         Returns a list of the best routes (based on the stars) given a list of routes)
         """
-        #Sort the list of routes
-        #split the list to give just the first 5
-        best_routes = routes
+        #TODO: split the list to give just the first 5
+        best_routes = sorted(routes, reverse=True)
         return best_routes
-        pass
+
+    def print_routes(self, routes):
+        """
+        """
+
+        for route in routes:
+            route.print_route_name() 
+
+    def get_user_input(self):
+        """
+        Asks for User input and save to self.
+        TODO: 
+            * Make sure the grade is an acceptable grad
+            * Take other grade formats and convert
+        """
+
+        print('What grade is your hardest onsight?')
+        self.min_grade = input()
+
+        #valid_grade_regex = re.compile(r'5\.\d{1,2}[a-d]+')
+        if not re.match(r'5\.\d{1,2}[a-d]+', str(self.min_grade)):
+            raise UserInputError('Grade given is not a valid climbing grade in the YDS.')
 
     def main(self):
 
@@ -43,13 +64,12 @@ class ProjFinder():
         MP            = MountainProjectAPI(email, key)
         location      = Location()
 
-
         # Testing
         #MP.get_user(email)
         
         ## User gives max red point grade (sport by default).
         ## Optionally the user can choose max distance, style, pitches, etc.
-        #self.get_user_input()
+        self.get_user_input()
 
         ## Getting the location based on the IP address.
         location.get_location()
@@ -58,18 +78,26 @@ class ProjFinder():
 
         ## Based on that location ask MP for all the routes nearby (max default 50).
         print('\nGetting nearby routes:')
-        nearby_routes = MP.get_nearby_routes(location)
-        for route in nearby_routes:
-            route.print_route_name()
+        nearby_routes = MP.get_nearby_routes(location, min_diff=self.min_grade)
 
-        ## Parse the list of routes to get the best ones (top 5 by default).
+        ## Get list of best routes (top 5 by default).
         best_routes = self.get_best_routes(nearby_routes)
 
         ## Show in a pretty way these routes with route name, grade, location, link.
-        #self.print_routes(best_routes)
+        self.print_routes(best_routes)
+
+class UserInputError(Exception):
+    """Exception raised for errors in the input.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
 
 
-class MountainProjectAPI():
+class MountainProjectAPI(object):
     """
     A class to interact with the Mountain Project API https://www.mountainproject.com/data
     """
@@ -163,8 +191,11 @@ class MountainProjectAPI():
         return routes
 
 
-class Location():
+class Location(object):
     """
+    TODO: 
+         * Do I really need this class?  (I could get IP on main class and have a named touple)
+         * What to do if IP doesn't reflect to actual location?
     """
     longitude = ''
     latitude = ''
@@ -201,7 +232,7 @@ class Location():
         print('country   : ' + self.country)
 
 
-class Route():
+class Route(object):
     """
     A class to encapsulate all the information of a route along with some helpful methods.
     """
@@ -216,7 +247,7 @@ class Route():
         self.url      = url
 
     def __str__(self):
-        return self.name
+        return ' '.join((self.name.ljust(20), str(self.grade).ljust(20), str(self.stars).ljust(20)))
 
     def is_single_pitch(self):
         return self.pitches == 1
@@ -237,10 +268,30 @@ class Route():
         #print((self.name, self.grade))
         print(self)
 
+    def __ge__(self, other):
+        return self.stars >= other.stars
+
+    def __le__(self, other):
+        return self.stars <= other.stars
+
+    def __gt__(self, other):
+        return self.stars > other.stars
+
+    def __lt__(self, other):
+        return self.stars < other.stars
+
+    def __eq__(self, other):
+        return self.stars == other.stars
+
+    def __ne__(self, other):
+        return self.stars != other.stars
+
 
 if __name__ == '__main__':
     proj_finder = ProjFinder()
     try:
         proj_finder.main()
+    except (UserInputError):
+        print('Please provide a valid input')
     except (ConnectionError):
         print('Could not connect to Mountain Project API')
