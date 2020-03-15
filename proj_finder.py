@@ -23,26 +23,28 @@ class ProjFinder(object):
     def __init__(self):
         self.nearby_route =[]
 
-    def get_best_routes(self, routes):
+    def get_best_routes(self, routes, top = 5):
         """
         Returns a list of the best routes (based on the stars) given a list of routes)
         """
         #TODO: split the list to give just the first 5
         best_routes = sorted(routes, reverse=True)
-        return best_routes
+        return best_routes[0:top]
 
     def print_routes(self, routes):
         """
+        Nicely print a list of routes.
         """
 
         for route in routes:
-            route.print_route_name() 
+            #route.print_route_name() 
+            print(route) 
 
     def get_user_input(self):
         """
         Asks for User input and save to self.
         TODO: 
-            * Make sure the grade is an acceptable grad
+            * Make sure the grade is an acceptable grade
             * Take other grade formats and convert
         """
 
@@ -50,7 +52,7 @@ class ProjFinder(object):
         self.min_grade = input()
 
         #valid_grade_regex = re.compile(r'5\.\d{1,2}[a-d]+')
-        if not re.match(r'5\.\d{1,2}[a-d]+', str(self.min_grade)):
+        if not re.match(r'5\.\d{1,2}[a-d]?', str(self.min_grade)):
             raise UserInputError('Grade given is not a valid climbing grade in the YDS.')
 
     def main(self):
@@ -76,11 +78,14 @@ class ProjFinder(object):
         print('Your location is set to:')
         location.print_location()
 
+        print()
         ## Based on that location ask MP for all the routes nearby (max default 50).
-        print('\nGetting nearby routes:')
+        print('Getting nearby routes.')
         nearby_routes = MP.get_nearby_routes(location, min_diff=self.min_grade)
 
         ## Get list of best routes (top 5 by default).
+        # TODO: allow user to say how many top routes to get
+        print('Getting the best routes.')
         best_routes = self.get_best_routes(nearby_routes)
 
         ## Show in a pretty way these routes with route name, grade, location, link.
@@ -170,7 +175,7 @@ class MountainProjectAPI(object):
         routes = []
 
         for json_route in json_routes['routes']:
-            #print(route['name'])
+            # TODO: What to do if one of the fields is empty
             loc = Location()
             loc.latitude  = json_route['latitude'],
             loc.longitude = json_route['longitude'],
@@ -247,7 +252,25 @@ class Route(object):
         self.url      = url
 
     def __str__(self):
-        return ' '.join((self.name.ljust(20), str(self.grade).ljust(20), str(self.stars).ljust(20)))
+        # TODO: don't show pitches when it's bouldering
+        pad = 20
+        route_str  = ' '.join((
+            'Name'.ljust(pad), 
+            'Grade'.ljust(pad), 
+            'Style'.ljust(pad), 
+            'Stars'.ljust(pad), 
+            'Pitches'.ljust(pad), 
+            'MP Link'.ljust(pad),
+            '\n'))
+        route_str += ' '.join((
+            self.name.ljust(pad), 
+            self.style.ljust(pad), 
+            str(self.grade).ljust(pad), 
+            str(self.stars).ljust(pad), 
+            str(self.pitches).ljust(pad), 
+            self.url.ljust(pad)
+            ))
+        return route_str
 
     def is_single_pitch(self):
         return self.pitches == 1
@@ -268,6 +291,7 @@ class Route(object):
         #print((self.name, self.grade))
         print(self)
 
+   # Allow sorting by stars
     def __ge__(self, other):
         return self.stars >= other.stars
 
